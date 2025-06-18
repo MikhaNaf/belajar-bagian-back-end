@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const UsersModel = require('../models/users')
 const bcrypt = require('bcrypt')
+const passwordCheck = require('../utils/passwordCheck')
 
 
 
@@ -29,12 +30,12 @@ router.post('/',async(req,res)=>{
 })
 router.put('/',async(req,res)=>{
     const { nip,nama,password, passwordBaru} = req.body
-    const userData = await UsersModel.findOne({where:{nip:nip}})
-    const compare = await bcrypt.compare(password,userData.password)
+    const check = await passwordCheck(password,nip)
+    const encryptedPassword = await bcrypt.hash(passwordBaru,10)
     
-    if(compare === true){
+    if(check.compare === true){
     const users = await UsersModel.update({
-        nama,password: passwordBaru
+        nama,password: encryptedPassword
     },{where: {nip:nip}})
     res.status(200).json({
         users:{updated:users[0]},
@@ -45,6 +46,21 @@ router.put('/',async(req,res)=>{
         error: "Password tidak sama",
     })
 }
+})
+router.post('/login', async(req,res)=>{
+    const {nip,password} = req.body
+    const check = await passwordCheck(password,nip)
+    if(check.compare === true){
+        res.status(200).json({
+            users: check.userData,
+            metadata: "login succes"
+        })
+    }else{
+        res.status(400).json({
+            error: "data invalid"
+        })
+    }
+
 })
 
 module.exports = router
